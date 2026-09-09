@@ -44,6 +44,7 @@ public class UserService {
                     userRequest.email());
             users.add(ur);
             return ur;
+
         }
         throw new UserAlreadyExistsException(String.format("User with name %s already exists", userRequest.name()));
         //тут добавление в бд

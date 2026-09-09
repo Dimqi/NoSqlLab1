@@ -1,33 +1,30 @@
 package com.example.nosqllab1.products;
 
+import com.example.nosqllab1.models.Product;
+import com.example.nosqllab1.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 public class ProductService {
-    private ArrayList<ProductResponse> products = new ArrayList<>(List.of(
-            new ProductResponse(1L, "пиво", "светлое нефильтрованное", new BigDecimal("120.99")),
-            new ProductResponse(2L, "пицца", "4 сыра 25см", new BigDecimal("550.99"))
-    )); //вместо этого потом бд будет
+
+    private final ProductRepository productRepository;
 
     public List<ProductResponse> getProducts() {
-        return products;
-        // тут получение из бд вместо фиксированного листа
+        // to do
+        return null
     }
 
     public ProductResponse getProductById(Long id) {
-        ProductResponse productResponse = products.stream()
-                .filter(product -> product.id().equals(id))
-                .findFirst()
-                .orElse(null);
-        if (productResponse == null) {
-            throw new ProductNotFoundException(String.format("Product with id %s not found", id));
-        }
-        return productResponse;
-        //тут поиск в бд вместо листа
+        Product product = productRepository.findById(String.valueOf(id))
+                .orElseThrow(() -> new RuntimeException("Product not found"));
+
+        return ProductResponse.fromEntity(product);
     }
 
     public ProductResponse createProduct(ProductRequest productRequest) {
