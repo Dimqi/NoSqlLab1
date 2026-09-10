@@ -31,12 +31,6 @@ public class ProductController {
         return ResponseEntity.status(HttpStatus.CREATED).body(productResponse);
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id,
-                                                         @RequestBody ProductRequest productRequest) {
-        ProductResponse productResponse = productService.updateProduct(id, productRequest);
-        return ResponseEntity.ok(productResponse);
-    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProductById(@PathVariable Long id) {

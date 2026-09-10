@@ -23,7 +23,7 @@ public record ProductResponse(Long id, String name, String description, BigDecim
                 parsedId,
                 product.getName(),
                 product.getDescription(),
-                BigDecimal.valueOf(product.getPrice())
+                product.getPrice()
         );
     }
 }
