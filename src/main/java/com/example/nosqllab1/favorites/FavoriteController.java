@@ -1,9 +1,12 @@
 package com.example.nosqllab1.favorites;
 
+import com.example.nosqllab1.models.User;
 import com.example.nosqllab1.products.ProductResponse;
+import com.example.nosqllab1.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,7 +15,9 @@ import java.util.List;
 @RequestMapping("/api/favorite")
 @RestController
 public class FavoriteController {
+
     private final FavoriteService favoriteService;
+    private final UserRepository userRepository;
 
     @GetMapping
     public ResponseEntity<List<ProductResponse>> getFavorites() {
@@ -34,7 +39,13 @@ public class FavoriteController {
         return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
     }
 
-    private Long getUserId() { //тут надо получать ид пользователя из security context но пока так
-        return 1L;
+    private Long getUserId() {
+        String currentUsername = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findAll().stream()
+                .filter(u -> u.getName().equalsIgnoreCase(currentUsername))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No user in context"));
+
+        return Long.parseLong(user.getId());
     }
 }
