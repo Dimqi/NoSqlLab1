@@ -1,68 +1,68 @@
 package com.example.nosqllab1.users;
 
+import com.example.nosqllab1.models.User;
+import com.example.nosqllab1.repository.UserRepository;
+import com.example.nosqllab1.riakservices.RiakCounterService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
+@RequiredArgsConstructor
 @Service
 public class UserService {
-    private ArrayList<UserResponse> users = new ArrayList<>(List.of(
-            new UserResponse(1L, "Петя", "petyadominator2015@gmail.com"),
-            new UserResponse(2L, "Дж. Эпштейн", "prettyisand@yandex.ru")
-    ));
+
+    private final UserRepository userRepository;
+    private final RiakCounterService riakCounterService;
+
 
     public void deleteUserById(Long id) {
-        boolean found = users.removeIf(user -> user.id().equals(id));
-        if (!found) {
-            throw new UserNotFoundException(String.format("User with id %s not found", id));
-        }
-        //тут удаление из бд
+        userRepository.delete(String.valueOf(id));
     }
 
-    public UserResponse updateUser(Long id, UserRequest userRequest) {
-        boolean found = users.removeIf(user -> user.id().equals(id));
-        if (found) {
-            UserResponse userResponse = new UserResponse(id,
-                    userRequest.name(),
-                    userRequest.email());
-            users.add(userResponse);
-            return userResponse;
-        }
-        throw new UserNotFoundException(String.format("User with id %s not found", id));
-        //тут обновление в бд
-    }
 
     public UserResponse createUser(UserRequest userRequest) {
-        UserResponse userResponse = users.stream()
-                .filter(user -> user.name().equals(userRequest.name()))
+        List<User> users = userRepository.findAll();
+        Boolean userExist = users.stream()
+                .map(user -> user.getName().equals(userRequest.name()))
                 .findFirst()
-                .orElse(null);
-        if (userResponse == null) {
-            UserResponse ur = new UserResponse(users.getLast().id() + 1,
-                    userRequest.name(),
-                    userRequest.email());
-            users.add(ur);
-            return ur;
-
+                .isPresent();
+        if(userExist){
+            throw new UserAlreadyExistsException("user already exist");
         }
-        throw new UserAlreadyExistsException(String.format("User with name %s already exists", userRequest.name()));
-        //тут добавление в бд
+
+       User user = new User();
+       long id = incrementeUserCounter();
+       user.setId(String.valueOf(id));
+       user.setName(userRequest.name());
+       user.setEmail(userRequest.email());
+       user.setPassword(userRequest.password());
+
+       return UserResponse.fromEntity(user);
     }
 
     public UserResponse getUserById(Long id) {
-        UserResponse userResponse = users.stream()
-                .filter(user -> user.id().equals(id))
-                .findFirst()
-                .orElse(null);
-        if (userResponse == null) {
-            throw new UserNotFoundException(String.format("User with id %s not found", id));
-        }
-        return userResponse;
-        //тут поиск в бд вместо листа
+        User user = userRepository.findById(String.valueOf(id))
+                .orElseThrow(() -> new UserNotFoundException("user not found"));
+
+        return UserResponse.fromEntity(user);
     }
 
     public List<UserResponse> getUsers() {
-        return users;
+        List<User> users = userRepository.findAll();
+        List<UserResponse> userResponses = users.stream()
+                .map(user -> UserResponse.fromEntity(user))
+                .toList();
+
+        return userResponses;
+    }
+
+    private long incrementeUserCounter(){
+        try {
+            return riakCounterService.generateNextId(User.class);
+        }catch (ExecutionException| InterruptedException e){
+            throw  new RuntimeException("error upgrade user counter");
+        }
     }
 }
