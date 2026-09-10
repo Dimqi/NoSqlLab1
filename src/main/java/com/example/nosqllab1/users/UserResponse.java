@@ -2,7 +2,7 @@ package com.example.nosqllab1.users;
 
 import com.example.nosqllab1.models.User;
 
-public record UserResponse(Long id, String name, String email) {
+public record UserResponse(Long id, String name, String email, String role) {
     public static UserResponse fromEntity(User user) {
         if (user == null) {
             return null;
@@ -20,7 +20,8 @@ public record UserResponse(Long id, String name, String email) {
         return new UserResponse(
                 parsedId,
                 user.getName(),
-                user.getEmail()
+                user.getEmail(),
+                user.getRole()
         );
     }
 }

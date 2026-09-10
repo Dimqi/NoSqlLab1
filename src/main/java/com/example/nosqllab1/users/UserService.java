@@ -4,6 +4,7 @@ import com.example.nosqllab1.models.User;
 import com.example.nosqllab1.repository.UserRepository;
 import com.example.nosqllab1.riakservices.RiakCounterService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -15,6 +16,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RiakCounterService riakCounterService;
+    private final PasswordEncoder passwordEncoder;
 
 
     public void deleteUserById(Long id) {
@@ -24,22 +26,24 @@ public class UserService {
 
     public UserResponse createUser(UserRequest userRequest) {
         List<User> users = userRepository.findAll();
-        Boolean userExist = users.stream()
-                .map(user -> user.getName().equals(userRequest.name()))
-                .findFirst()
-                .isPresent();
-        if(userExist){
+        boolean userExist = users.stream()
+                .anyMatch(user -> user.getName() != null && user.getName().equalsIgnoreCase(userRequest.name()));
+
+        if (userExist) {
             throw new UserAlreadyExistsException("user already exist");
         }
 
-       User user = new User();
-       long id = incrementeUserCounter();
-       user.setId(String.valueOf(id));
-       user.setName(userRequest.name());
-       user.setEmail(userRequest.email());
-       user.setPassword(userRequest.password());
+        User user = new User();
+        long id = incrementUserCounter();
+        user.setId(String.valueOf(id));
+        user.setName(userRequest.name());
+        user.setEmail(userRequest.email());
+        user.setPassword(passwordEncoder.encode(userRequest.password()));
+        user.setRole("ПРЕПОДАВАТЕЛЬ");
 
-       return UserResponse.fromEntity(user);
+        userRepository.save(user);
+
+        return UserResponse.fromEntity(user);
     }
 
     public UserResponse getUserById(Long id) {
@@ -58,7 +62,7 @@ public class UserService {
         return userResponses;
     }
 
-    private long incrementeUserCounter(){
+    private long incrementUserCounter(){
         try {
             return riakCounterService.generateNextId(User.class);
         }catch (ExecutionException| InterruptedException e){
