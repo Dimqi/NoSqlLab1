@@ -1,36 +1,46 @@
 package com.example.nosqllab1.favorites;
 
+import com.example.nosqllab1.models.Product;
 import com.example.nosqllab1.products.ProductResponse;
-import com.example.nosqllab1.products.ProductService;
+import com.example.nosqllab1.repository.FavoriteRepository;
+import com.example.nosqllab1.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 @RequiredArgsConstructor
 @Service
 public class FavoriteService {
-    private final ProductService productService;
-    private Map<Long, Set<Long>> favorites = new ConcurrentHashMap<>();
+
+    private final FavoriteRepository favoriteRepository;
+    private final ProductRepository productRepository;
 
     public List<ProductResponse> getUsersFavorites(Long userId) {
-        Set<Long> favoriteIds = favorites.getOrDefault(userId,  new HashSet<>());
-        return favoriteIds.stream().map(productService::getProductById).toList();
-        // тут тоже все из бд
+        Set<Long> favoriteIds = favoriteRepository.findProductIdsByUserId(userId);
+
+        if (favoriteIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return favoriteIds.stream()
+                .map(productId -> productRepository.findById(String.valueOf(productId)).orElse(null))
+                .filter(Objects::nonNull)
+                .map(ProductResponse::fromEntity)
+                .toList();
     }
 
     public void addFavorite(Long userId, Long productId) {
-        ProductResponse productResponse = productService.getProductById(productId);
-        favorites.computeIfAbsent(userId, k -> new HashSet<>());
-        favorites.get(userId).add(productResponse.id());
-        // тут в бд писать надол
+        Product product = productRepository.findById(String.valueOf(productId))
+                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+
+        favoriteRepository.addProductId(userId, Long.valueOf(product.getId()));
     }
 
     public void deleteFavorite(Long userId, Long productId) {
-        Set<Long> favoriteIds = favorites.get(userId);
-        if (favoriteIds != null) {
-            favoriteIds.remove(productId);
-        }
+        favoriteRepository.removeProductId(userId, productId);
     }
 }
