@@ -24,6 +24,7 @@ public class SecurityConfig {
                         .requestMatchers("/", "/index.html", "/favicon.ico", "/api/auth/**", "/api/user").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/product/**").permitAll()
                         .requestMatchers("/api/favorite/**").hasRole("ПРЕПОДАВАТЕЛЬ")
+                        .requestMatchers("/api/operations/**").hasRole("ПРЕПОДАВАТЕЛЬ")
                         .anyRequest().authenticated()
                 )
                 .logout(logout -> logout

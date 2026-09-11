@@ -57,11 +57,23 @@ public class FavoriteRepository {
     }
 
     public void removeProductId(Long userId, Long productId) {
-        Location location = new Location(namespace, String.valueOf(userId));
-        SetUpdate setUpdate = new SetUpdate().remove(BinaryValue.create(String.valueOf(productId)));
-        UpdateSet update = new UpdateSet.Builder(location, setUpdate).build();
+        try {
+            Location location = new Location(namespace, String.valueOf(userId));
+            FetchSet fetch = new FetchSet.Builder(location).build();
+            FetchSet.Response response = client.execute(fetch);
+            if (response.getDatatype() == null) {
+                return;
+            }
+            SetUpdate setUpdate = new SetUpdate().remove(BinaryValue.create(String.valueOf(productId)));
+            UpdateSet update = new UpdateSet.Builder(location, setUpdate)
+                    .withContext(response.getContext())
+                    .build();
 
-        executeUpdate(update);
+            client.execute(update);
+        } catch (ExecutionException | InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Ошибка удаления из CRDT Set в Riak", e);
+        }
     }
 
     private void executeUpdate(UpdateSet updateCommand) {

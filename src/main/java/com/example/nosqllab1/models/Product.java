@@ -6,22 +6,11 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 
+@Getter
+@Setter
 public class Product {
-
-    @Setter
-    @Getter
     private String id;
-
-    @Setter
-    @Getter
     private String name;
-
-    @Setter
-    @Getter
     private BigDecimal price;
-
-    @Setter
-    @Getter
     private String description;
-
 }
