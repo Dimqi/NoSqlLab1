@@ -18,7 +18,8 @@ public class LeadsService {
         try {
             return riakCounterService.generateNextId(LeadsService.class);
         } catch (ExecutionException |InterruptedException e) {
-            throw new RuntimeException("Ошибка при создании заявки");
+            e.printStackTrace();
+            throw new RuntimeException("Ошибка при создании заявки: " + e.getCause().getMessage(), e);
         }
     }
 

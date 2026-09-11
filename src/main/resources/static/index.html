@@ -281,6 +281,25 @@
             }
         };
 
+
+        const handleCreateLead = async () => {
+            try {
+                const res = await fetch(`${API_BASE}/lead`, {
+                    method: 'POST'
+                });
+
+                if (res.ok) {
+                    const leadId = await res.json();
+                    alert(`Заявка успешно создана! ID заявки: ${leadId}`);
+                } else {
+                    alert('Ошибка при создании заявки');
+                }
+            } catch (e) {
+                console.error('Ошибка отправки заявки', e);
+                alert('Не удалось отправить заявку');
+            }
+        };
+
         if (!currentUser) {
             return (
                 <div className="auth-container">
@@ -344,6 +363,10 @@
                             onClick={() => setActiveTab('profile')}
                         >
                             Профиль
+                        </button>
+
+                        <button className="nav-btn" onClick={handleCreateLead}>
+                            Оставить заявку
                         </button>
                     </div>
 
