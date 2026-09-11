@@ -16,3 +16,4 @@ public record ProductRequest(
         BigDecimal price
 ) {
 }
+
