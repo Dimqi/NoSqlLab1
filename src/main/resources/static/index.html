@@ -25,7 +25,7 @@
             padding: 30px;
             border-radius: 8px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            width: 360px;
+            width: 380px;
         }
         .input {
             width: 100%;
@@ -62,6 +62,66 @@
             font-weight: bold;
         }
         .btn-register:hover { background: #218838; }
+
+        .btn-reset {
+            width: 100%;
+            padding: 10px;
+            background: #ff9f43;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+        .btn-reset:hover { background: #e0832b; }
+
+        .btn-activate {
+            width: 100%;
+            padding: 10px;
+            background: #17a2b8;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+        .btn-activate:hover { background: #138496; }
+
+        .reset-section {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        /* Стили для модального окна */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-card {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 420px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal-url-box {
+            background: #f1f3f5;
+            padding: 10px;
+            border-radius: 4px;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 13px;
+            margin: 12px 0;
+            border: 1px solid #e9ecef;
+        }
 
         header {
             display: flex;
@@ -153,8 +213,12 @@
         const [activeTab, setActiveTab] = useState('catalog');
         const [products, setProducts] = useState([]);
         const [favorites, setFavorites] = useState([]);
-        const [form, setForm] = useState({ name: '', email: '', password: '' });
+        const [form, setForm] = useState({ name: '', email: '', password: '', tokenInput: '' });
         const [error, setError] = useState('');
+
+        // Состояние для отображения модального окна с готовой ссылкой
+        const [generatedUrl, setGeneratedUrl] = useState(null);
+        const [copied, setCopied] = useState(false);
 
         useEffect(() => {
             if (currentUser) {
@@ -255,6 +319,73 @@
             }
         };
 
+        // Генерация токена -> выводим в модальное окно вместо alert
+        const handleCreateToken = async () => {
+            setError('');
+            try {
+                const res = await fetch(`${API_BASE}/resetData/createToken`, {
+                    method: 'POST'
+                });
+
+                if (!res.ok) {
+                    throw new Error('Ошибка генерации ссылки');
+                }
+
+                const resetUrl = await res.text();
+                setGeneratedUrl(resetUrl);
+                setCopied(false);
+            } catch (err) {
+                setError(err.message || 'Ошибка при вызове createToken');
+            }
+        };
+
+        // Функция копирования в буфер обмена
+        const handleCopyUrl = () => {
+            if (generatedUrl) {
+                navigator.clipboard.writeText(generatedUrl);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 2000);
+            }
+        };
+
+        // Функция автозаполнения токена в форме из ссылки для удобства тестирования
+        const handleAutoFillToken = () => {
+            try {
+                const urlObj = new URL(generatedUrl);
+                const token = urlObj.searchParams.get('token') || generatedUrl;
+                setForm(prev => ({ ...prev, tokenInput: token }));
+                setGeneratedUrl(null);
+            } catch (e) {
+                setForm(prev => ({ ...prev, tokenInput: generatedUrl }));
+                setGeneratedUrl(null);
+            }
+        };
+
+        // Активация токена
+        const handleActivateToken = async () => {
+            setError('');
+            if (!form.tokenInput.trim()) {
+                setError('Введите токен для активации');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_BASE}/resetData/reset?token=${encodeURIComponent(form.tokenInput.trim())}`, {
+                    method: 'POST'
+                });
+
+                const text = await res.text();
+
+                if (!res.ok) {
+                    throw new Error(text || 'Ошибка при активации токена');
+                }
+
+                alert(`Успех: ${text}`);
+            } catch (err) {
+                setError(err.message || 'Ошибка активации');
+            }
+        };
+
         const handleLogout = async () => {
             try {
                 await fetch(`${API_BASE}/auth/logout`, { method: 'POST' });
@@ -281,13 +412,9 @@
             }
         };
 
-
         const handleCreateLead = async () => {
             try {
-                const res = await fetch(`${API_BASE}/lead`, {
-                    method: 'POST'
-                });
-
+                const res = await fetch(`${API_BASE}/lead`, { method: 'POST' });
                 if (res.ok) {
                     const leadId = await res.json();
                     alert(`Заявка успешно создана! ID заявки: ${leadId}`);
@@ -337,7 +464,64 @@
                                 Зарегистрироваться
                             </button>
                         </div>
+
+                        <div className="reset-section">
+                            <button className="btn-reset" type="button" onClick={handleCreateToken}>
+                                Сгенерировать ссылку сброса
+                            </button>
+
+                            <div style={{ marginTop: 12 }}>
+                                <input
+                                    className="input"
+                                    placeholder="Вставьте токен или ссылку"
+                                    value={form.tokenInput}
+                                    onChange={e => setForm({...form, tokenInput: e.target.value})}
+                                />
+                                <button className="btn-activate" type="button" onClick={handleActivateToken}>
+                                    Проверить / Активировать токен
+                                </button>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Модальное окно при сгенерированной ссылке */}
+                    {generatedUrl && (
+                        <div className="modal-overlay">
+                            <div className="modal-card">
+                                <h3 style={{ marginTop: 0 }}>Ссылка сброса создана</h3>
+                                <p style={{ fontSize: '14px', color: '#666', margin: '8px 0' }}>Ваша сгенерированная ссылка:</p>
+
+                                <div className="modal-url-box">
+                                    <a href={generatedUrl} target="_blank" rel="noopener noreferrer">
+                                        {generatedUrl}
+                                    </a>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
+                                    <button
+                                        className="btn-login"
+                                        onClick={handleCopyUrl}
+                                    >
+                                        {copied ? 'Скопировано в буфер!' : 'Скопировать ссылку'}
+                                    </button>
+
+                                    <button
+                                        className="btn-activate"
+                                        onClick={handleAutoFillToken}
+                                    >
+                                        Подставить токен в форму проверки
+                                    </button>
+
+                                    <button
+                                        style={{ padding: '8px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#666' }}
+                                        onClick={() => setGeneratedUrl(null)}
+                                    >
+                                        Закрыть
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             );
         }
