@@ -2,7 +2,7 @@ package com.example.nosqllab1.resetToken;
 
 import com.example.nosqllab1.models.ResetTokenData;
 import com.example.nosqllab1.repository.ResetTokenDataRepository;
-import com.example.nosqllab1.repository.UserRepository;
+import com.example.nosqllab1.users.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,8 +21,9 @@ public class ResetTokenService {
     private static final String BASE_URL = "http://localhost:8080/api/resetData/reset";
 
     public String createResetToken(String username){
-        //to-do
-        //if(!userRepository.existById) throw new RuntimeException("юзера нет");
+        if(!userRepository.existsByNameIgnoreCase(username)){
+            throw new RuntimeException("User not found");
+        }
 
         String token = UUID.randomUUID().toString();
         long expiresAt = Instant.now().getEpochSecond() + TTL_SECONDS;
