@@ -25,6 +25,12 @@ public abstract class RiakRepository<T> {
         this.entityClass = entityClass;
     }
 
+    public RiakRepository(RiakClient client, String bucketType, String bucketName, Class<T> entityClass) {
+        this.client = client;
+        this.namespace = new Namespace(bucketType, bucketName);
+        this.entityClass = entityClass;
+    }
+
     protected abstract String extractId(T entity);
 
     public void save(T entity) {

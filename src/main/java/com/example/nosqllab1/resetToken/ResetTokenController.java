@@ -20,16 +20,16 @@ public class ResetTokenController {
     private final ResetTokenService resetTokenService;
 
     @PostMapping("/createToken")
-    public ResponseEntity<String> createToken(){
-        String url = resetTokenService.createResetToken();
+    public ResponseEntity<String> createToken(@RequestParam(name="username") String username){
+        String url = resetTokenService.createResetToken(username);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(url);
     }
 
 
     @PostMapping("/reset")
-    public ResponseEntity<String> resetData(@RequestParam(name="token") String token){
-        String response = resetTokenService.activateToken(token);
+    public ResponseEntity<String> resetData(@RequestParam(name="token") String token, @RequestParam(name="username") String username){
+        String response = resetTokenService.activateToken(token, username);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(response);
     }

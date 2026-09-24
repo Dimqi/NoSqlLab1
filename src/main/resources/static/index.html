@@ -95,7 +95,6 @@
             border-top: 1px solid #eee;
         }
 
-        /* Стили для модального окна */
         .modal-overlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -216,7 +215,6 @@
         const [form, setForm] = useState({ name: '', email: '', password: '', tokenInput: '' });
         const [error, setError] = useState('');
 
-        // Состояние для отображения модального окна с готовой ссылкой
         const [generatedUrl, setGeneratedUrl] = useState(null);
         const [copied, setCopied] = useState(false);
 
@@ -319,16 +317,22 @@
             }
         };
 
-        // Генерация токена -> выводим в модальное окно вместо alert
+        // Генерация токена: берем username из поля формы
         const handleCreateToken = async () => {
             setError('');
+            const username = form.name.trim();
+            if (!username) {
+                setError('Введите имя пользователя (username) в форму выше для генерации ссылки');
+                return;
+            }
+
             try {
-                const res = await fetch(`${API_BASE}/resetData/createToken`, {
+                const res = await fetch(`${API_BASE}/resetData/createToken?username=${encodeURIComponent(username)}`, {
                     method: 'POST'
                 });
 
                 if (!res.ok) {
-                    throw new Error('Ошибка генерации ссылки');
+                    throw new Error('Ошибка генерации ссылки (возможно, такого пользователя нет)');
                 }
 
                 const resetUrl = await res.text();
@@ -339,7 +343,6 @@
             }
         };
 
-        // Функция копирования в буфер обмена
         const handleCopyUrl = () => {
             if (generatedUrl) {
                 navigator.clipboard.writeText(generatedUrl);
@@ -348,29 +351,46 @@
             }
         };
 
-        // Функция автозаполнения токена в форме из ссылки для удобства тестирования
+        // Автоподстановка: можно вставить всю ссылку целиком или только токен
         const handleAutoFillToken = () => {
-            try {
-                const urlObj = new URL(generatedUrl);
-                const token = urlObj.searchParams.get('token') || generatedUrl;
-                setForm(prev => ({ ...prev, tokenInput: token }));
-                setGeneratedUrl(null);
-            } catch (e) {
+            if (generatedUrl) {
                 setForm(prev => ({ ...prev, tokenInput: generatedUrl }));
                 setGeneratedUrl(null);
             }
         };
 
-        // Активация токена
+        // Активация токена: парсим username и token из ссылки (или берем username из формы)
         const handleActivateToken = async () => {
             setError('');
-            if (!form.tokenInput.trim()) {
-                setError('Введите токен для активации');
+            const inputVal = form.tokenInput.trim();
+            if (!inputVal) {
+                setError('Введите ссылку или токен для активации');
+                return;
+            }
+
+            let token = inputVal;
+            let username = form.name.trim();
+
+            try {
+                // Пробуем распарсить как URL, если вставили целиком ссылку
+                const urlObj = new URL(inputVal);
+                const queryToken = urlObj.searchParams.get('token');
+                const queryUsername = urlObj.searchParams.get('username');
+
+                if (queryToken) token = queryToken;
+                if (queryUsername) username = queryUsername;
+            } catch (e) {
+                // Если это невалидный URL, значит ввели чистый токен.
+                // Тогда обязательно нужен username из верхнего поля формы.
+            }
+
+            if (!username) {
+                setError('Укажите username в форме сверху или вставьте полную ссылку сброса');
                 return;
             }
 
             try {
-                const res = await fetch(`${API_BASE}/resetData/reset?token=${encodeURIComponent(form.tokenInput.trim())}`, {
+                const res = await fetch(`${API_BASE}/resetData/reset?username=${encodeURIComponent(username)}&token=${encodeURIComponent(token)}`, {
                     method: 'POST'
                 });
 
@@ -437,7 +457,7 @@
 
                         <input
                             className="input"
-                            placeholder="Имя пользователя"
+                            placeholder="Имя пользователя (username)"
                             value={form.name}
                             onChange={e => setForm({...form, name: e.target.value})}
                         />
@@ -473,7 +493,7 @@
                             <div style={{ marginTop: 12 }}>
                                 <input
                                     className="input"
-                                    placeholder="Вставьте токен или ссылку"
+                                    placeholder="Вставьте ссылку или токен"
                                     value={form.tokenInput}
                                     onChange={e => setForm({...form, tokenInput: e.target.value})}
                                 />
@@ -484,7 +504,6 @@
                         </div>
                     </div>
 
-                    {/* Модальное окно при сгенерированной ссылке */}
                     {generatedUrl && (
                         <div className="modal-overlay">
                             <div className="modal-card">
@@ -498,18 +517,12 @@
                                 </div>
 
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '16px' }}>
-                                    <button
-                                        className="btn-login"
-                                        onClick={handleCopyUrl}
-                                    >
+                                    <button className="btn-login" onClick={handleCopyUrl}>
                                         {copied ? 'Скопировано в буфер!' : 'Скопировать ссылку'}
                                     </button>
 
-                                    <button
-                                        className="btn-activate"
-                                        onClick={handleAutoFillToken}
-                                    >
-                                        Подставить токен в форму проверки
+                                    <button className="btn-activate" onClick={handleAutoFillToken}>
+                                        Подставить ссылку в поле ввода
                                     </button>
 
                                     <button

@@ -35,7 +35,7 @@ public class ProductService {
         return ProductResponse.fromEntity(product);
     }
 
-    @Transactional
+
     public ProductResponse createProduct(ProductRequest productRequest) {
         Product product = new Product();
         long id = incrementProductCounter();

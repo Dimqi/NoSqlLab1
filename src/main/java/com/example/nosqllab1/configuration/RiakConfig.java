@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.net.UnknownHostException;
+import java.util.Arrays;
 
 @Configuration
 public class RiakConfig {
@@ -16,15 +17,26 @@ public class RiakConfig {
     private String host;
 
     @Value("${riak.port:8087}")
-    private int port;
+    private int port1;
+
+    @Value("${riak.port:8089}")
+    private int port2;
 
     @Bean
     public RiakClient riakClient() throws UnknownHostException {
-        RiakNode node = new RiakNode.Builder()
+        RiakNode node1 = new RiakNode.Builder()
                 .withRemoteAddress(host)
-                .withRemotePort(port)
+                .withRemotePort(port1)
                 .build();
-        RiakCluster cluster = new RiakCluster.Builder(node).build();
+
+        RiakNode node2 = new RiakNode.Builder()
+                .withRemoteAddress(host)
+                .withRemotePort(port2)
+                .build();
+
+
+        RiakCluster cluster = new RiakCluster.Builder(Arrays.asList(node1, node2)).build();
+
         cluster.start();
         return new RiakClient(cluster);
     }

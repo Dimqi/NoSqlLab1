@@ -5,13 +5,14 @@ import com.example.nosqllab1.models.ResetTokenData;
 import org.springframework.stereotype.Repository;
 
 @Repository
-public class ResetTokenDataRepository extends RiakRepository<ResetTokenData>{
+public class ResetTokenDataRepository extends RiakRepository<ResetTokenData> {
+
     public ResetTokenDataRepository(RiakClient client) {
-        super(client, "password_reset_tokens", ResetTokenData.class);
+        super(client, "expiration_bucket", "reset-tokens", ResetTokenData.class);
     }
 
     @Override
     protected String extractId(ResetTokenData entity) {
-        return entity.getId();
+        return entity.getUsername();
     }
 }

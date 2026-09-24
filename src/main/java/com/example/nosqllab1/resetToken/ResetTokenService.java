@@ -2,6 +2,7 @@ package com.example.nosqllab1.resetToken;
 
 import com.example.nosqllab1.models.ResetTokenData;
 import com.example.nosqllab1.repository.ResetTokenDataRepository;
+import com.example.nosqllab1.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -13,26 +14,33 @@ import java.util.UUID;
 public class ResetTokenService {
 
     private final ResetTokenDataRepository resetTokenDataRepository;
+    private final UserRepository userRepository;
 
 
-    private static final long TTL_SECONDS = 120;
-    private static final String BASE_URL = "http://localhost:8080/api/resetData/reset?token=";
+    private static final long TTL_SECONDS = 60;
+    private static final String BASE_URL = "http://localhost:8080/api/resetData/reset";
 
-    public String createResetToken(){
+    public String createResetToken(String username){
+        //to-do
+        //if(!userRepository.existById) throw new RuntimeException("юзера нет");
+
         String token = UUID.randomUUID().toString();
         long expiresAt = Instant.now().getEpochSecond() + TTL_SECONDS;
 
-        ResetTokenData resetTokenData = new ResetTokenData(token, expiresAt);
+        ResetTokenData resetTokenData = new ResetTokenData(username, token, expiresAt);
 
         resetTokenDataRepository.save(resetTokenData);
 
-        return BASE_URL + token;
-
+        return BASE_URL + "?username=" + username + "&token=" + token;
     }
 
-    public String activateToken (String token){
-        ResetTokenData resetTokenData = resetTokenDataRepository.findById(token)
+    public String activateToken (String token, String username){
+        ResetTokenData resetTokenData = resetTokenDataRepository.findById(username)
                 .orElseThrow(() -> new RuntimeException("token not found"));
+
+        if (!resetTokenData.getToken().equals(token)){
+            throw new RuntimeException("Invalid token");
+        }
 
         if (resetTokenData.isExpired()){
             resetTokenDataRepository.delete(token);

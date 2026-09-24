@@ -15,13 +15,12 @@ import java.time.Instant;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class ResetTokenData {
-    private String id;
+    private String username;
+    private String token;
     private Long expiresAt;
 
     @JsonIgnore
     public boolean isExpired() {
         return Instant.now().getEpochSecond() > this.expiresAt;
     }
-
-
 }
