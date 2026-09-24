@@ -1,54 +1,49 @@
 package com.example.nosqllab1.favorites;
 
-import com.example.nosqllab1.models.Product;
+import com.example.nosqllab1.products.ProductEntity;
+import com.example.nosqllab1.products.ProductNotFoundException;
 import com.example.nosqllab1.products.ProductResponse;
-import com.example.nosqllab1.repository.FavoriteRepository;
-import com.example.nosqllab1.repository.ProductRepository;
+import com.example.nosqllab1.products.ProductRepository;
 import com.example.nosqllab1.operations.OperationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
-
 @RequiredArgsConstructor
 @Service
 public class FavoriteService {
 
-    private final FavoriteRepository favoriteRepository;
+    private final UserFavoriteRepository favoriteRepository;
     private final ProductRepository productRepository;
     private final OperationService operationService;
 
     public List<ProductResponse> getUsersFavorites(Long userId) {
-        Set<Long> favoriteIds = favoriteRepository.findProductIdsByUserId(userId);
-
-        if (favoriteIds.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        return favoriteIds.stream()
-                .map(productId -> productRepository.findById(String.valueOf(productId)).orElse(null))
-                .filter(Objects::nonNull)
+        return favoriteRepository.findProductsByUserId(userId)
+                .stream()
                 .map(ProductResponse::fromEntity)
                 .toList();
     }
 
+    @Transactional
     public void addFavorite(Long userId, Long productId) {
-        Product product = productRepository.findById(String.valueOf(productId))
-                .orElseThrow(() -> new RuntimeException("Product not found with id: " + productId));
+        ProductEntity product = productRepository.findById(productId)
+                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
 
-        operationService.logOperation(userId, String.format("User (id=%s) added product (id=%s) to favs",
-                userId,
-                productId));
-        favoriteRepository.addProductId(userId, Long.valueOf(product.getId()));
+        UserFavoriteId id = new UserFavoriteId(userId, productId);
+        if (!favoriteRepository.existsById(id)) {
+            favoriteRepository.save(new UserFavoriteEntity(userId, product));
+        }
+
+        operationService.logOperation(userId, String.format("User (id=%d) added product (id=%d) to favs", userId, productId));
     }
 
+    @Transactional
     public void deleteFavorite(Long userId, Long productId) {
-        operationService.logOperation(userId, String.format("User (id=%s) deleted product (id=%s) from favs",
+        favoriteRepository.deleteById(new UserFavoriteId(userId, productId));
+        operationService.logOperation(
                 userId,
-                productId));
-        favoriteRepository.removeProductId(userId, productId);
+                String.format("User (id=%d) deleted product (id=%d) from favs", userId, productId)
+        );
     }
 }
