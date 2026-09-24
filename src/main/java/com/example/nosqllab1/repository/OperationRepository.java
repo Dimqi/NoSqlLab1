@@ -12,6 +12,6 @@ public class OperationRepository extends RiakRepository<OperationLog> {
 
     @Override
     protected String extractId(OperationLog entity) {
-        return entity.getId();
+        return entity.id();
     }
 }

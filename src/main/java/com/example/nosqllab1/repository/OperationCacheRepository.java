@@ -12,6 +12,6 @@ public class OperationCacheRepository extends RiakRepository<OperationCache> {
 
     @Override
     protected String extractId(OperationCache entity) {
-        return entity.getUserId();
+        return entity.userId();
     }
 }

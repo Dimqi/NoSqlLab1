@@ -16,36 +16,54 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Service
 public class OperationService {
+
     private final OperationRepository operationRepository;
     private final OperationCacheRepository operationCacheRepository;
 
     public void logOperation(Long userId, String operation) {
-        OperationLog operationLog = new OperationLog();
-        operationLog.setId(UUID.randomUUID().toString());
-        operationLog.setUserId(userId);
-        operationLog.setOperation(operation);
-        operationLog.setOperationTime(LocalDateTime.now().toString());
+        OperationLog operationLog = new OperationLog(
+                UUID.randomUUID().toString(),
+                userId,
+                operation,
+                LocalDateTime.now().toString()
+        );
 
         operationRepository.save(operationLog);
-        operationCacheRepository.delete(String.valueOf(userId));
+
+        String cacheKey = String.valueOf(userId);
+        Optional<OperationCache> cacheOperations = operationCacheRepository.findById(cacheKey);
+
+        if (cacheOperations.isPresent()) {
+            OperationCache cache = cacheOperations.get();
+            List<OperationLog> operations = new ArrayList<>(cache.operations() != null ? cache.operations() : Collections.emptyList());
+            operations.addFirst(operationLog);
+            if (operations.size() > 10) {
+                operations.removeLast();
+            }
+            operationCacheRepository.save(new OperationCache(cacheKey, operations));
+            log.info("Cache update for user {}", userId);
+        }
     }
 
     public List<OperationLog> getUserOperations(Long userId) {
-        Optional<OperationCache> operations = operationCacheRepository.findById(String.valueOf(userId));
-        if (operations.isPresent()) {
-            log.info("cache hit");
-            return operations.get().getOperations();
+        String cacheKey = String.valueOf(userId);
+
+        Optional<OperationCache> cache = operationCacheRepository.findById(cacheKey);
+        if (cache.isPresent()) {
+            log.info("Cache hit for user {}", userId);
+            return cache.get().operations();
         }
-        log.info("cache miss");
-        List<OperationLog> op = operationRepository.findAll()
+
+        log.info("Cache miss for user {}", userId);
+        List<OperationLog> userOps = operationRepository.findAll()
                 .stream()
-                .filter(operation -> operation.getUserId().equals(userId))
-                .sorted(Comparator.comparing(OperationLog::getOperationTime).reversed())
-                .limit(10L).collect(Collectors.toCollection(ArrayList::new));
-        OperationCache operationCache = new OperationCache();
-        operationCache.setOperations(op);
-        operationCache.setUserId(String.valueOf(userId));
-        operationCacheRepository.save(operationCache);
-        return op;
+                .filter(op -> Objects.equals(op.userId(), userId))
+                .sorted(Comparator.comparing(OperationLog::operationTime).reversed())
+                .limit(10)
+                .collect(Collectors.toCollection(ArrayList::new));
+
+        operationCacheRepository.save(new OperationCache(cacheKey, userOps));
+
+        return userOps;
     }
 }
