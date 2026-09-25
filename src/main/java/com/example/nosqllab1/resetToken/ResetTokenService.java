@@ -44,11 +44,11 @@ public class ResetTokenService {
         }
 
         if (resetTokenData.isExpired()){
-            resetTokenDataRepository.delete(token);
+            resetTokenDataRepository.delete(username);
             throw new RuntimeException("token outdated(");
         }
 
-        resetTokenDataRepository.delete(token);
+        resetTokenDataRepository.delete(username);
         return "Данные успешно обновлены";
     }
 
