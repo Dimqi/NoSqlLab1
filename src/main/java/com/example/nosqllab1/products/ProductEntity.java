@@ -25,7 +25,7 @@ public class ProductEntity {
     private String name;
     @Column(name = "description")
     private String description;
-    @Column(name = "price", nullable = false, columnDefinition = "DOUBLE PRECISION CHECK (price > 0)")
+    @Column(name = "price", nullable = false)
     private BigDecimal price;
 
     public ProductEntity(String name, String description, BigDecimal price) {

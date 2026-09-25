@@ -193,6 +193,42 @@
             margin-bottom: 12px;
             font-size: 13px;
         }
+
+        .op-list {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .op-card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-left: 4px solid #17a2b8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .op-title {
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 15px;
+        }
+        .op-id {
+            font-size: 11px;
+            color: #888;
+            font-family: monospace;
+            margin-top: 4px;
+        }
+        .op-time {
+            font-size: 13px;
+            color: #7f8c8d;
+            background: #f1f2f6;
+            padding: 4px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -212,6 +248,9 @@
         const [activeTab, setActiveTab] = useState('catalog');
         const [products, setProducts] = useState([]);
         const [favorites, setFavorites] = useState([]);
+        const [operations, setOperations] = useState([]);
+        const [loadingOps, setLoadingOps] = useState(false);
+
         const [form, setForm] = useState({ name: '', email: '', password: '', tokenInput: '' });
         const [error, setError] = useState('');
 
@@ -224,6 +263,12 @@
                 loadFavorites();
             }
         }, [currentUser]);
+
+        useEffect(() => {
+            if (activeTab === 'operations' && currentUser) {
+                loadOperations();
+            }
+        }, [activeTab]);
 
         const loadProducts = async () => {
             try {
@@ -246,6 +291,22 @@
                 }
             } catch (e) {
                 console.error('Ошибка загрузки избранного', e);
+            }
+        };
+
+        const loadOperations = async () => {
+            if (!currentUser || !currentUser.id) return;
+            setLoadingOps(true);
+            try {
+                const res = await fetch(`${API_BASE}/operations/${currentUser.id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setOperations(data || []);
+                }
+            } catch (e) {
+                console.error('Ошибка загрузки операций', e);
+            } finally {
+                setLoadingOps(false);
             }
         };
 
@@ -317,7 +378,6 @@
             }
         };
 
-        // Генерация токена: берем username из поля формы
         const handleCreateToken = async () => {
             setError('');
             const username = form.name.trim();
@@ -351,7 +411,6 @@
             }
         };
 
-        // Автоподстановка: можно вставить всю ссылку целиком или только токен
         const handleAutoFillToken = () => {
             if (generatedUrl) {
                 setForm(prev => ({ ...prev, tokenInput: generatedUrl }));
@@ -359,7 +418,6 @@
             }
         };
 
-        // Активация токена: парсим username и token из ссылки (или берем username из формы)
         const handleActivateToken = async () => {
             setError('');
             const inputVal = form.tokenInput.trim();
@@ -372,7 +430,6 @@
             let username = form.name.trim();
 
             try {
-                // Пробуем распарсить как URL, если вставили целиком ссылку
                 const urlObj = new URL(inputVal);
                 const queryToken = urlObj.searchParams.get('token');
                 const queryUsername = urlObj.searchParams.get('username');
@@ -380,8 +437,6 @@
                 if (queryToken) token = queryToken;
                 if (queryUsername) username = queryUsername;
             } catch (e) {
-                // Если это невалидный URL, значит ввели чистый токен.
-                // Тогда обязательно нужен username из верхнего поля формы.
             }
 
             if (!username) {
@@ -415,6 +470,7 @@
             setCurrentUser(null);
             localStorage.removeItem('user');
             setFavorites([]);
+            setOperations([]);
         };
 
         const isFavorite = (id) => favorites.some(f => f.id === id);
@@ -556,6 +612,12 @@
                             Избранное ({favorites.length})
                         </button>
                         <button
+                            className={`nav-btn ${activeTab === 'operations' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('operations')}
+                        >
+                            История операций
+                        </button>
+                        <button
                             className={`nav-btn ${activeTab === 'profile' ? 'active' : ''}`}
                             onClick={() => setActiveTab('profile')}
                         >
@@ -622,6 +684,32 @@
                                                 <button className="btn-fav active" onClick={() => toggleFavorite(p)}>
                                                     Удалить
                                                 </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {activeTab === 'operations' && (
+                        <div>
+                            <div>
+                                <h2 style={{ margin: 0 }}>История операций</h2>
+                            </div>
+
+                            {operations.length === 0 ? (
+                                <p style={{ marginTop: 20 }}>История пуста</p>
+                            ) : (
+                                <div className="op-list">
+                                    {operations.map(op => (
+                                        <div key={op.id} className="op-card">
+                                            <div>
+                                                <div className="op-title">{op.operation}</div>
+                                                <div className="op-id">ID в Riak: {op.id}</div>
+                                            </div>
+                                            <div className="op-time">
+                                                {op.operationTime ? op.operationTime.replace('T', ' ').substring(0, 19) : ''}
                                             </div>
                                         </div>
                                     ))}
